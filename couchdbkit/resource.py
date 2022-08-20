@@ -19,6 +19,7 @@ Example:
     u'Welcome'
 
 """
+
 from __future__ import absolute_import
 import base64
 import re
@@ -27,7 +28,7 @@ from . import __version__
 from .utils import json, url_quote
 import six
 
-USER_AGENT = 'couchdbkit/%s' % __version__
+USER_AGENT = f'couchdbkit/{__version__}'
 
 
 def encode_params(params):
@@ -35,12 +36,14 @@ def encode_params(params):
     _params = {}
     if params:
         for name, value in params.items():
-            if name in ('key', 'startkey', 'endkey'):
+            if (
+                name in ('key', 'startkey', 'endkey')
+                or value is not None
+                and not isinstance(value, six.string_types)
+            ):
                 value = json.dumps(value)
             elif value is None:
                 continue
-            elif not isinstance(value, six.string_types):
-                value = json.dumps(value)
             _params[name] = value
     return _params
 

@@ -23,14 +23,13 @@ class ConsumerBase(object):
                 'last_seq': changes.last_seq,
                 'results': []
             }
-        if cb is not None:
-            check_callable(cb)
-            cb(change)
-        else:
+        if cb is None:
             return {
                 'last_seq': change['seq'],
                 'results': [change]
             }
+        check_callable(cb)
+        cb(change)
 
     def wait_once(self, cb=None, **params):
         raise NotImplementedError

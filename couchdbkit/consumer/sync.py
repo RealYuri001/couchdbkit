@@ -16,7 +16,7 @@ class SyncConsumer(ConsumerBase):
         if cb is not None:
             check_callable(cb)
 
-        params.update({"feed": "longpoll"})
+        params["feed"] = "longpoll"
         changes = self.db.cloudant_database.changes(**params)
         for change in changes:
             if cb is not None:
@@ -26,7 +26,7 @@ class SyncConsumer(ConsumerBase):
 
     def wait(self, cb, **params):
         check_callable(cb)
-        params.update({"feed": "continuous"})
+        params["feed"] = "continuous"
         changes = self.db.cloudant_database.changes(**params)
 
         for change in changes:

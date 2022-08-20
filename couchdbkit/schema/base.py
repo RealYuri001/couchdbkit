@@ -132,10 +132,11 @@ class DocumentBase(DocumentSchema):
 
         doc = self.to_json()
         db.save_doc(doc, **params)
-        if '_id' in doc and '_rev' in doc:
-            self._doc.update(doc)
-        elif '_id' in doc:
-            self._doc.update({'_id': doc['_id']})
+        if '_id' in doc:
+            if '_rev' in doc:
+                self._doc.update(doc)
+            else:
+                self._doc.update({'_id': doc['_id']})
 
     store = save
 

@@ -63,15 +63,15 @@ class FSDoc(object):
         """
         idfile = os.path.join(self.docdir, '_id')
         if os.path.exists(idfile):
-            docid = utils.read_file(idfile).split("\n")[0].strip()
-            if docid: return docid
+            if docid := utils.read_file(idfile).split("\n")[0].strip():
+                return docid
         if self.is_ddoc:
-            return "_design/%s" % os.path.split(self.docdir)[1]
+            return f"_design/{os.path.split(self.docdir)[1]}"
         else:
             return os.path.split(self.docdir)[1]
 
     def __repr__(self):
-        return "<%s (%s/%s)>" % (self.__class__.__name__, self.docdir, self.docid)
+        return f"<{self.__class__.__name__} ({self.docdir}/{self.docid})>"
 
     def __str__(self):
         return utils.json.dumps(self.doc())
@@ -84,7 +84,7 @@ class FSDoc(object):
         if not os.path.isfile(rcfile):
             utils.write_json(rcfile, {})
         else:
-            logger.warning("CouchApp already initialized in %s." % self.docdir)
+            logger.warning(f"CouchApp already initialized in {self.docdir}.")
 
     def push(self, dbs, atomic=True, force=False):
         """Push a doc to a list of database `dburls`. If noatomic is true
@@ -106,13 +106,12 @@ class FSDoc(object):
 
                 for name, filepath in self.attachments():
                     if name not in attachments:
-                        logger.debug("attach %s " % name)
+                        logger.debug(f"attach {name} ")
                         db.put_attachment(doc, open(filepath, "r"),
                                             name=name)
 
             if db_push:
-                logger.debug("%s/%s had been pushed from %s" % (db.uri,
-                    self.docid, self.docdir))
+                logger.debug(f"{db.uri}/{self.docid} had been pushed from {self.docdir}")
             pushed |= db_push
         return pushed
 
@@ -153,9 +152,9 @@ class FSDoc(object):
         self._doc = {'_id': self.docid}
 
         # get designdoc
-        self._doc.update(self.dir_to_fields(self.docdir, manifest=manifest))
+        self._doc |= self.dir_to_fields(self.docdir, manifest=manifest)
 
-        if not 'couchapp' in self._doc:
+        if 'couchapp' not in self._doc:
             self._doc['couchapp'] = {}
 
         self.olddoc = {}
@@ -163,7 +162,7 @@ class FSDoc(object):
             try:
                 self.olddoc = db.open_doc(self._doc['_id'])
                 attachments = self.olddoc.get('_attachments') or {}
-                self._doc.update({'_rev': self.olddoc['_rev']})
+                self._doc['_rev'] = self.olddoc['_rev']
             except ResourceNotFound:
                 self.olddoc = {}
 
@@ -176,25 +175,21 @@ class FSDoc(object):
         for name, filepath in self.attachments():
             signatures[name] = utils.sign_file(filepath)
             if with_attachments and not old_signatures:
-                logger.debug("attach %s " % name)
+                logger.debug(f"attach {name} ")
                 attachments[name] = self.attachment_stub(name, filepath)
 
         if old_signatures:
             for name, signature in old_signatures.items():
                 cursign = signatures.get(name)
-                if not cursign:
-                    logger.debug("detach %s " % name)
-                    del attachments[name]
-                elif cursign != signature:
-                    logger.debug("detach %s " % name)
-                    del attachments[name]
-                else:
+                if cursign and cursign == signature:
                     continue
 
+                logger.debug(f"detach {name} ")
+                del attachments[name]
             if with_attachments:
                 for name, filepath in self.attachments():
                     if old_signatures.get(name) != signatures.get(name) or force:
-                        logger.debug("attach %s " % name)
+                        logger.debug(f"attach {name} ")
                         attachments[name] = self.attachment_stub(name, filepath)
 
         self._doc['_attachments'] = attachments
@@ -237,7 +232,7 @@ class FSDoc(object):
                     if value and isinstance(value, dict):
                         views[vname] = value
                     else:
-                        del manifest[dmanifest["views/%s" % vname]]
+                        del manifest[dmanifest[f"views/{vname}"]]
                 self._doc['views'] = views
                 package_views(self._doc,self._doc["views"], self.docdir,
                         objects)
@@ -251,9 +246,8 @@ class FSDoc(object):
 
     def check_ignore(self, item):
         for i in self.ignores:
-            match = re.match(i, item)
-            if match:
-                logger.debug("ignoring %s" % item)
+            if match := re.match(i, item):
+                logger.debug(f"ignoring {item}")
                 return True
         return False
 
@@ -346,26 +340,27 @@ class FSDoc(object):
     def _process_attachments(self, path, vendor=None):
         """ the function processing directory to yeld
         attachments. """
-        if os.path.isdir(path):
-            for root, dirs, files in os.walk(path):
-                for dirname in dirs:
-                    if dirname.startswith('.'):
-                        dirs.remove(dirname)
-                    elif self.check_ignore(dirname):
-                        dirs.remove(dirname)
-                if files:
-                    for filename in files:
-                        if filename.startswith('.'):
-                            continue
-                        elif self.check_ignore(filename):
-                            continue
-                        else:
-                            filepath = os.path.join(root, filename)
-                            name = utils.relpath(filepath, path)
-                            if vendor is not None:
-                                name = os.path.join('vendor', vendor, name)
-                            name = _replace_backslash(name)
-                            yield (name, filepath)
+        if not os.path.isdir(path):
+            return
+        for root, dirs, files in os.walk(path):
+            for dirname in dirs:
+                if dirname.startswith('.'):
+                    dirs.remove(dirname)
+                elif self.check_ignore(dirname):
+                    dirs.remove(dirname)
+            if files:
+                for filename in files:
+                    if filename.startswith('.'):
+                        continue
+                    elif self.check_ignore(filename):
+                        continue
+                    else:
+                        filepath = os.path.join(root, filename)
+                        name = utils.relpath(filepath, path)
+                        if vendor is not None:
+                            name = os.path.join('vendor', vendor, name)
+                        name = _replace_backslash(name)
+                        yield (name, filepath)
 
     def attachments(self):
         """ This function yield a tuple (name, filepath) corresponding
@@ -378,8 +373,7 @@ class FSDoc(object):
         """
         # process main attachments
         attachdir = os.path.join(self.docdir, "_attachments")
-        for attachment in self._process_attachments(attachdir):
-            yield attachment
+        yield from self._process_attachments(attachdir)
         vendordir = os.path.join(self.docdir, 'vendor')
         if not os.path.isdir(vendordir):
             logger.debug("%s don't exist" % vendordir)
@@ -390,16 +384,14 @@ class FSDoc(object):
             if os.path.isdir(current_path):
                 attachdir = os.path.join(current_path, '_attachments')
                 if os.path.isdir(attachdir):
-                    for attachment in self._process_attachments(attachdir,
-                                                        vendor=name):
-                        yield attachment
+                    yield from self._process_attachments(attachdir, vendor=name)
 
     def index(self, dburl, index):
         if index is not None:
-            return "%s/%s/%s" % (dburl, self.docid, index)
+            return f"{dburl}/{self.docid}/{index}"
         elif os.path.isfile(os.path.join(self.docdir, "_attachments",
                     'index.html')):
-            return "%s/%s/index.html" % (dburl, self.docid)
+            return f"{dburl}/{self.docid}/index.html"
         return False
 
 def document(path, create=False, docid=None, is_ddoc=True):
@@ -441,8 +433,7 @@ def pushapps(path, dbs, atomic=True, export=False, couchapprc=False):
     if apps:
         if export:
             docs= [doc.doc() for doc in apps]
-            jsonobj = {'docs': docs}
-            return jsonobj
+            return {'docs': docs}
         else:
             for db in dbs:
                 docs = []

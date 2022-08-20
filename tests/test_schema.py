@@ -105,20 +105,21 @@ class DocumentTestCase(unittest.TestCase):
         self.assert_(doc2.string == "test")
 
     def testDeleteProperty(self):
+
         class Test(Document):
             string = StringProperty(default="test")
 
         doc = Test(string="test")
         del doc.string
-        self.assert_(getattr(doc, "string") == None)
-        self.assert_(doc['string'] == None)
+        self.assert_(getattr(doc, "string") is None)
+        self.assert_(doc['string'] is None)
 
         class Test2(Document):
             pass
 
         doc1 = Test2(string="test")
         del doc1.string
-        self.assert_(getattr(doc, "string") == None)
+        self.assert_(getattr(doc, "string") is None)
 
 
     def testContain(self):
@@ -237,7 +238,7 @@ class DocumentTestCase(unittest.TestCase):
         self.assert_(doc3['string3'] == "blah")
 
         doc4 = db.open_doc(doc2._id, schema=Test)
-        self.assert_(isinstance(doc4, Test) == True)
+        self.assert_(isinstance(doc4, Test))
         self.assert_(doc4.string3 == "blah")
 
         self.server.delete_db('couchdbkit_test')
@@ -397,6 +398,7 @@ class DocumentTestCase(unittest.TestCase):
         self.server.delete_db('couchdbkit_test')
 
     def testViewNoneValue(self):
+
         class TestDoc(Document):
             field1 = StringProperty()
             field2 = StringProperty()
@@ -422,14 +424,14 @@ class DocumentTestCase(unittest.TestCase):
         db.save_doc(design_doc)
         results = TestDoc.view('test/all')
         self.assert_(len(results) == 2)
-        self.assert_(isinstance(results.first(), dict) == True)
+        self.assert_(isinstance(results.first(), dict))
         results2 = TestDoc.view('test/all', include_docs=True)
         self.assert_(len(results2) == 2)
-        self.assert_(isinstance(results2.first(), TestDoc) == True)
+        self.assert_(isinstance(results2.first(), TestDoc))
         results3 = TestDoc.view('test/all', include_docs=True,
                                 wrapper=lambda row: row['doc']['field1'])
         self.assert_(len(results3) == 2)
-        self.assert_(isinstance(results3.first(), six.text_type) == True)
+        self.assert_(isinstance(results3.first(), six.text_type))
         self.server.delete_db('couchdbkit_test')
 
     def test_wrong_doc_type(self):
@@ -463,6 +465,7 @@ class DocumentTestCase(unittest.TestCase):
             self.server.delete_db('couchdbkit_test')
 
     def testOne(self):
+
         class TestDoc(Document):
             field1 = StringProperty()
             field2 = StringProperty()
@@ -497,7 +500,7 @@ class DocumentTestCase(unittest.TestCase):
         self.assert_(len(results) == 1)
 
         one = results.one()
-        self.assert_(isinstance(one, TestDoc) == True)
+        self.assert_(isinstance(one, TestDoc))
 
         doc1.save()
         results = TestDoc.view('test/all')
@@ -788,6 +791,7 @@ class PropertyTestCase(unittest.TestCase):
         self.assert_(isinstance(vd, six.string_types))
 
     def testSchemaProperty1(self):
+
         class MySchema(DocumentSchema):
             astring = StringProperty()
 
@@ -806,7 +810,7 @@ class PropertyTestCase(unittest.TestCase):
         doc.save()
         doc2 = MyDoc.get(doc._id)
 
-        self.assert_(isinstance(doc2.schema, MySchema) == True)
+        self.assert_(isinstance(doc2.schema, MySchema))
         self.assert_(doc2.schema.astring == u"test")
         self.assert_(doc2._doc['schema']['astring'] == u"test")
 
@@ -901,9 +905,13 @@ class PropertyTestCase(unittest.TestCase):
         self.assert_(two.one.field2 == '54321')
 
     def testSchemaWithPythonTypes(self):
+
+
+
         class A(Document):
             c = six.text_type()
-            i = int(4)
+            i = 4
+
         a = A()
         self.assert_(a._doc == {'c': u'', 'doc_type': 'A', 'i': 4})
         def bad_value():
@@ -958,7 +966,7 @@ class PropertyTestCase(unittest.TestCase):
             's2': None,
             'sm': {'doc_type': 'A', 's': u'foo'}})
 
-        self.assert_(isinstance(b.created, datetime) == True)
+        self.assert_(isinstance(b.created, datetime))
 
         a.created = datetime(2009, 2, 6, 20, 58, 20, 905556)
         self.assert_(a._doc ==  {'created': '2009-02-06T20:58:20Z',
@@ -1054,7 +1062,7 @@ class PropertyTestCase(unittest.TestCase):
         a2.s = 'test2'
         a3 = A()
         a3.s = 'test3'
-        b.slm[0:1] = [a1, a2]
+        b.slm[:1] = [a1, a2]
         self.assertEqual(len(b.slm), 2)
         self.assertEqual([b.slm[0].s, b.slm[1].s], [a1.s, a2.s])
         self.assertEqual(b._doc, {
@@ -1528,7 +1536,7 @@ class PropertyTestCase(unittest.TestCase):
         self.assert_(a._doc == {'d': {'s': 'test'}, 'doc_type': 'A'})
         a.d['created'] = datetime(2009, 4, 16, 16, 5, 41)
         self.assert_(a._doc == {'d': {'created': '2009-04-16T16:05:41Z', 's': 'test'}, 'doc_type': 'A'})
-        self.assert_(isinstance(a.d['created'], datetime) == True)
+        self.assert_(isinstance(a.d['created'], datetime))
         a.d.update({'s2': 'test'})
         self.assert_(a.d['s2'] == 'test')
         a.d.update({'d2': datetime(2009, 4, 16, 16, 5, 41)})
@@ -1571,8 +1579,7 @@ class PropertyTestCase(unittest.TestCase):
 
         a = A()
         a.d['s'] = "level1"
-        a.d['d'] = {}
-        a.d['d']['s'] = "level2"
+        a.d['d'] = {'s': "level2"}
         self.assert_(a._doc == {'d': {'d': {'s': 'level2'}, 's': 'level1'}, 'doc_type': 'A'})
         a.save()
         a1 = A.get(a._id)
@@ -1657,9 +1664,7 @@ class PropertyTestCase(unittest.TestCase):
 
         a = A()
         a.s = "test"
-        a.d = {}
-        a.d['s'] = "level1"
-        a.d['d'] = {}
+        a.d = {'s': "level1", 'd': {}}
         a.d['d']['s'] = "level2"
         self.assert_(a._doc == {'d': {'d': {'s': 'level2'}, 's': 'level1'}, 'doc_type': 'A', 's': u'test'})
         a.save()
@@ -1678,15 +1683,16 @@ class PropertyTestCase(unittest.TestCase):
         b = self.db.get(a._id, wrapper=A2.wrap)
         self.assert_(b.l == ["a", "b", "c"])
         b.l = []
-        self.assert_(b.l == [])
+        self.assert_(not b.l)
         self.assert_(b.to_json()['l'] == [])
 
     def testDictPropertyPop(self):
+
         class A(Document):
             x = DictProperty()
 
         a = A()
-        self.assert_(a.x.pop('nothing', None) == None)
+        self.assert_(a.x.pop('nothing', None) is None)
 
     def testDictPropertyPop2(self):
         class A(Document):
@@ -1705,8 +1711,7 @@ class PropertyTestCase(unittest.TestCase):
         A.set_db(self.db)
 
         a = A()
-        a.l = []
-        a.l.append(1)
+        a.l = [1]
         a.l.append(datetime(2009, 5, 12, 13, 35, 9, 425701))
         a.l.append({ 's': "test"})
         self.assert_(a.l == [1, datetime(2009, 5, 12, 13, 35, 9), {'s': 'test'}])
@@ -1751,8 +1756,7 @@ class PropertyTestCase(unittest.TestCase):
         self.db.save_doc(design_doc)
 
         a2 = A()
-        a2.l = []
-        a2.l.append(7)
+        a2.l = [7]
         a2.save()
         docs = A.view('test/all')
         self.assert_(len(docs) == 2)
@@ -1781,7 +1785,7 @@ class PropertyTestCase(unittest.TestCase):
         b = self.db.get(a._id, wrapper=A2.wrap)
         self.assert_(b.d == {"a": 1, "b": 2, "c": 3})
         b.d = {}
-        self.assert_(b.d == {})
+        self.assert_(not b.d)
         self.assert_(b.to_json()['d'] == {})
 
 
@@ -1792,8 +1796,11 @@ if support_setproperty:
             """
             class A(Document):
                 s = SetProperty()
+
+
             class B(Document):
-                s = SetProperty(default=set((42, 24)))
+                s = SetProperty(default={42, 24})
+
 
             a = A()
             self.assertEqual(a._doc, {'doc_type': 'A', 's': []})
@@ -1818,8 +1825,8 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
-            self.assertEqual(a.s, set(('foo', 'bar')))
+            a.s = {'foo', 'bar'}
+            self.assertEqual(a.s, {'foo', 'bar'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar'])
             self.assertEqual(len(a.s), 2)
             self.assertEqual(len(a._doc['s']), 2)
@@ -1838,8 +1845,8 @@ if support_setproperty:
 
             d1 = datetime(2011, 3, 15, 17, 8, 1)
             a = A()
-            a.s = set((d1, ))
-            self.assertEqual(a.s, set((d1, )))
+            a.s = {d1}
+            self.assertEqual(a.s, {d1})
             self.assertItemsEqual(a._doc['s'], ['2011-03-15T17:08:01Z'])
             self.assertEqual(len(a.s), 1)
             self.assertEqual(len(a._doc['s']), 1)
@@ -1883,34 +1890,34 @@ if support_setproperty:
             a.s = set(iter1)
             # Union
             b = a.s.union(iter2)
-            self.assertEqual(b, set(('foo', 'bar', 'baz')))
+            self.assertEqual(b, {'foo', 'bar', 'baz'})
             b = a.s.union(iter2, iter3)
-            self.assertEqual(b, set(('foo', 'bar', 'baz', 'fiz')))
+            self.assertEqual(b, {'foo', 'bar', 'baz', 'fiz'})
             b = a.s | set(iter2)
-            self.assertEqual(b, set(('foo', 'bar', 'baz')))
+            self.assertEqual(b, {'foo', 'bar', 'baz'})
             b = a.s | set(iter2) | set(iter3)
-            self.assertEqual(b, set(('foo', 'bar', 'baz', 'fiz')))
+            self.assertEqual(b, {'foo', 'bar', 'baz', 'fiz'})
             # Intersection
             b = a.s.intersection(iter2)
-            self.assertEqual(b, set(('bar', )))
+            self.assertEqual(b, {'bar'})
             b = a.s.intersection(iter2, iter3)
-            self.assertEqual(b, set(('bar', )))
+            self.assertEqual(b, {'bar'})
             b = a.s & set(iter2)
-            self.assertEqual(b, set(('bar', )))
+            self.assertEqual(b, {'bar'})
             b = a.s & set(iter2) & set(iter3)
-            self.assertEqual(b, set(('bar', )))
+            self.assertEqual(b, {'bar'})
             # Difference
             b = a.s.difference(iter2)
-            self.assertEqual(b, set(('foo', )))
+            self.assertEqual(b, {'foo'})
             b = a.s.difference(iter2, iter3)
-            self.assertEqual(b, set(('foo', )))
+            self.assertEqual(b, {'foo'})
             b = a.s - set(iter2)
-            self.assertEqual(b, set(('foo', )))
+            self.assertEqual(b, {'foo'})
             b = a.s - set(iter2) - set(iter3)
-            self.assertEqual(b, set(('foo', )))
+            self.assertEqual(b, {'foo'})
             # Symmetric difference
-            self.assertEqual(a.s.symmetric_difference(iter2), set(('foo', 'baz')))
-            self.assertEqual(a.s ^ set(iter2), set(('foo', 'baz')))
+            self.assertEqual(a.s.symmetric_difference(iter2), {'foo', 'baz'})
+            self.assertEqual(a.s ^ set(iter2), {'foo', 'baz'})
 
 
         def testSetPropertyCopy(self):
@@ -1920,7 +1927,7 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
+            a.s = {'foo', 'bar'}
             b = a.s.copy()
             self.assertIsNot(b, a.s)
 
@@ -1937,23 +1944,23 @@ if support_setproperty:
             a = A()
             a.s = set(iter1)
             a.s.update(iter1)
-            self.assertEqual(a.s, set(('foo', 'bar')))
+            self.assertEqual(a.s, {'foo', 'bar'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar'])
             a.s = set(iter1)
             a.s.update(iter2)
-            self.assertEqual(a.s, set(('foo', 'bar', 'baz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'baz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'baz'])
             a.s = set(iter1)
             a.s.update(iter2, iter3)
-            self.assertEqual(a.s, set(('foo', 'bar', 'baz', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'baz', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'baz', 'fiz'])
             a.s = set(iter1)
             a.s |= set(iter2)
-            self.assertEqual(a.s, set(('foo', 'bar', 'baz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'baz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'baz'])
             a.s = set(iter1)
             a.s |= set(iter2) | set(iter3)
-            self.assertEqual(a.s, set(('foo', 'bar', 'baz', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'baz', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'baz', 'fiz'])
 
 
@@ -1969,11 +1976,11 @@ if support_setproperty:
             a = A()
             a.s = set(iter1)
             a.s.intersection_update(iter1)
-            self.assertEqual(a.s, set(('foo', 'baz')))
+            self.assertEqual(a.s, {'foo', 'baz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'baz'])
             a.s = set(iter1)
             a.s.intersection_update(iter2)
-            self.assertEqual(a.s, set(('baz', )))
+            self.assertEqual(a.s, {'baz'})
             self.assertItemsEqual(a._doc['s'], ['baz'])
             a.s = set(iter1)
             a.s.intersection_update(iter2, iter3)
@@ -1981,7 +1988,7 @@ if support_setproperty:
             self.assertItemsEqual(a._doc['s'], [])
             a.s = set(iter1)
             a.s &= set(iter2)
-            self.assertEqual(a.s, set(('baz', )))
+            self.assertEqual(a.s, {'baz'})
             self.assertItemsEqual(a._doc['s'], ['baz'])
             a.s = set(iter1)
             a.s &= set(iter2) & set(iter3)
@@ -2005,11 +2012,11 @@ if support_setproperty:
             self.assertEqual(a._doc['s'], [])
             a.s = set(iter1)
             a.s.difference_update(iter2)
-            self.assertEqual(a.s, set(('foo', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'fiz'])
             a.s = set(iter1)
             a.s.difference_update(iter2, iter3)
-            self.assertEqual(a.s, set(('foo', )))
+            self.assertEqual(a.s, {'foo'})
             self.assertItemsEqual(a._doc['s'], ['foo'])
             a.s = set(iter1)
             a.s -= set(iter1)
@@ -2017,11 +2024,11 @@ if support_setproperty:
             self.assertEqual(a._doc['s'], [])
             a.s = set(iter1)
             a.s -= set(iter2)
-            self.assertEqual(a.s, set(('foo', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'fiz'])
             a.s = set(iter1)
             a.s -= set(iter2) | set(iter3)
-            self.assertEqual(a.s, set(('foo', )))
+            self.assertEqual(a.s, {'foo'})
             self.assertItemsEqual(a._doc['s'], ['foo'])
 
 
@@ -2040,7 +2047,7 @@ if support_setproperty:
             self.assertEqual(a._doc['s'], [])
             a.s = set(iter1)
             a.s.symmetric_difference_update(iter2)
-            self.assertEqual(a.s, set(('foo', 'bar', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'fiz'])
             a.s = set(iter1)
             a.s ^= set(iter1)
@@ -2048,7 +2055,7 @@ if support_setproperty:
             self.assertEqual(a._doc['s'], [])
             a.s = set(iter1)
             a.s ^= set(iter2)
-            self.assertEqual(a.s, set(('foo', 'bar', 'fiz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'fiz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'fiz'])
 
 
@@ -2059,12 +2066,11 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
-            a.s.add('bar')
-            self.assertEqual(a.s, set(('foo', 'bar')))
+            a.s = {'foo', 'bar'}
+            self.assertEqual(a.s, {'foo', 'bar'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar'])
             a.s.add('baz')
-            self.assertEqual(a.s, set(('foo', 'bar', 'baz')))
+            self.assertEqual(a.s, {'foo', 'bar', 'baz'})
             self.assertItemsEqual(a._doc['s'], ['foo', 'bar', 'baz'])
 
 
@@ -2075,9 +2081,9 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
+            a.s = {'foo', 'bar'}
             a.s.remove('foo')
-            self.assertEqual(a.s, set(('bar', )))
+            self.assertEqual(a.s, {'bar'})
             self.assertItemsEqual(a._doc['s'], ['bar'])
             with self.assertRaises(KeyError):
                 a.s.remove('foo')
@@ -2090,12 +2096,12 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
+            a.s = {'foo', 'bar'}
             a.s.discard('foo')
-            self.assertEqual(a.s, set(('bar', )))
+            self.assertEqual(a.s, {'bar'})
             self.assertItemsEqual(a._doc['s'], ['bar'])
             a.s.discard('foo')
-            self.assertEqual(a.s, set(('bar', )))
+            self.assertEqual(a.s, {'bar'})
             self.assertItemsEqual(a._doc['s'], ['bar'])
 
 
@@ -2106,7 +2112,7 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
+            a.s = {'foo', 'bar'}
             b = a.s.pop()
             self.assertNotIn(b, a.s)
             self.assertNotIn(b, a._doc['s'])
@@ -2124,7 +2130,7 @@ if support_setproperty:
                 s = SetProperty()
 
             a = A()
-            a.s = set(('foo', 'bar'))
+            a.s = {'foo', 'bar'}
             a.s.clear()
             self.assertEqual(a.s, set())
             self.assertEqual(a._doc['s'], [])

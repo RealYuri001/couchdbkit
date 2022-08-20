@@ -32,7 +32,7 @@ class ClientServerTestCase(unittest.TestCase):
 
     def testCreateDb(self):
         res = self.Server.create_db('couchdbkit_test')
-        self.assert_(isinstance(res, Database) == True)
+        self.assert_(isinstance(res, Database))
         all_dbs = self.Server.all_dbs()
         self.assert_('couchdbkit_test' in all_dbs)
         del self.Server['couchdbkit_test']
@@ -76,7 +76,7 @@ class ClientServerTestCase(unittest.TestCase):
 
     def testGetUUIDS(self):
         uuid = self.Server.next_uuid()
-        self.assert_(isinstance(uuid, six.string_types) == True)
+        self.assert_(isinstance(uuid, six.string_types))
         self.assert_(len(self.Server._uuids) == 999)
         uuid2 = self.Server.next_uuid()
         self.assert_(uuid != uuid2)
@@ -94,7 +94,7 @@ class ClientDatabaseTestCase(unittest.TestCase):
 
     def testCreateDatabase(self):
         db = self.Server.create_db('couchdbkit_test')
-        self.assert_(isinstance(db, Database) == True)
+        self.assert_(isinstance(db, Database))
         info = db.info()
         self.assert_(info['db_name'] == 'couchdbkit_test')
         del self.Server['couchdbkit_test']
@@ -142,7 +142,7 @@ class ClientDatabaseTestCase(unittest.TestCase):
         db = self.Server.create_db('couchdbkit_test')
         doc = { 'string': 'test', 'number': 4 }
         db.save_doc(doc)
-        doc.update({'number': 6})
+        doc['number'] = 6
         db.save_doc(doc)
         doc = db.get(doc['_id'])
         self.assert_(doc['number'] == 6)
@@ -197,7 +197,7 @@ class ClientDatabaseTestCase(unittest.TestCase):
         except ResourceConflict:
             is_conflict = True
 
-        self.assert_(is_conflict == False)
+        self.assert_(not is_conflict)
 
 
     def testMultipleDocWithSlashes(self):
