@@ -25,7 +25,7 @@ class CouchDbKitTestSuiteRunner(DjangoTestSuiteRunner):
     dbs = []
 
     def get_test_db_name(self, dbname):
-        return "%s_test" % dbname
+        return f"{dbname}_test"
 
     def get_test_db(self, db):
         # not copying DB would modify the db dict and add multiple "_test"
@@ -35,20 +35,16 @@ class CouchDbKitTestSuiteRunner(DjangoTestSuiteRunner):
 
     def setup_databases(self, **kwargs):
         print("overridding the couchdbkit database settings to use a test database!")
-                 
+
         # first pass: just implement this as a monkey-patch to the loading module
         # overriding all the existing couchdb settings
         databases = getattr(settings, "COUCHDB_DATABASES", [])
 
         # Convert old style to new style
         if isinstance(databases, (list, tuple)):
-            databases = dict(
-                (app_name, {'URL': uri}) for app_name, uri in databases
-            )
+            databases = {app_name: {'URL': uri} for app_name, uri in databases}
 
-        self.dbs = dict(
-            (app, self.get_test_db(db)) for app, db in databases.items()
-        )
+        self.dbs = {app: self.get_test_db(db) for app, db in databases.items()}
 
         old_handler = loading.couchdbkit_handler
         couchdbkit_handler = loading.CouchdbkitHandler(self.dbs)
@@ -56,13 +52,13 @@ class CouchDbKitTestSuiteRunner(DjangoTestSuiteRunner):
         loading.register_schema = couchdbkit_handler.register_schema
         loading.get_schema = couchdbkit_handler.get_schema
         loading.get_db = couchdbkit_handler.get_db
-        
+
         # register our dbs with the extension document classes
         for app, value in old_handler.app_schema.items():
             for name, cls in value.items():
                 cls.set_db(loading.get_db(app))
-                                
-                
+
+
         return super(CouchDbKitTestSuiteRunner, self).setup_databases(**kwargs)
     
     def teardown_databases(self, old_config, **kwargs):
@@ -77,9 +73,12 @@ class CouchDbKitTestSuiteRunner(DjangoTestSuiteRunner):
             try:
                 db.server.delete_db(db.dbname)
                 deleted_databases.append(db.dbname)
-                print("deleted database %s for %s" % (db.dbname, app_label))
+                print(f"deleted database {db.dbname} for {app_label}")
             except ResourceNotFound:
-                print("database %s not found for %s! it was probably already deleted." % (db.dbname, app_label))
+                print(
+                    f"database {db.dbname} not found for {app_label}! it was probably already deleted."
+                )
+
         if skipcount:
-            print("skipped deleting %s app databases that were already deleted" % skipcount)
+            print(f"skipped deleting {skipcount} app databases that were already deleted")
         return super(CouchDbKitTestSuiteRunner, self).teardown_databases(old_config, **kwargs)

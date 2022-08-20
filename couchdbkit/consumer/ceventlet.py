@@ -53,10 +53,7 @@ class ContinuousChangeConsumer(ChangeConsumer):
                 line = body.readline()
                 if not line:
                     break
-                if line.endswith("\r\n"):
-                    line = line[:-2]
-                else:
-                    line = line[:-1]
+                line = line[:-2] if line.endswith("\r\n") else line[:-1]
                 if not line:
                     continue
                 self.process_change(line)
@@ -69,10 +66,10 @@ class LongPollChangeConsumer(ChangeConsumer):
         with resp.body_stream() as body:
             buf = []
             while True:
-                data = body.read()
-                if not data:
+                if data := body.read():
+                    buf.append(data)
+                else:
                     break
-                buf.append(data)
             change = "".join(buf)
             try:
                 change = json.loads(change)
@@ -101,27 +98,27 @@ class EventletConsumer(SyncConsumer):
             return super(EventletConsumer, self).wait_once(**params)
 
         check_callable(cb)
-        params.update({"feed": "longpoll"})
+        params["feed"] = "longpoll"
         consumer = LongPollChangeConsumer(self.db, callback=cb,
                 **params)
         consumer.wait()
 
     def wait(self, cb, **params):
-        params.update({"feed": "continuous"})
+        params["feed"] = "continuous"
         consumer = ContinuousChangeConsumer(self.db, callback=cb,
                 **params)
         consumer.wait()
 
     def wait_once_async(self, cb, **params):
         check_callable(cb)
-        params.update({"feed": "longpoll"})
+        params["feed"] = "longpoll"
         consumer = LongPollChangeConsumer(self.db, callback=cb,
                 **params)
         return consumer.wait_async()
 
     def wait_async(self, cb, **params):
         check_callable(cb)
-        params.update({"feed": "continuous"})
+        params["feed"] = "continuous"
         consumer = ContinuousChangeConsumer(self.db, callback=cb,
                 **params)
         return consumer.wait_async()

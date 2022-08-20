@@ -47,8 +47,8 @@ if not hasattr(os.path, 'relpath'):
         def splitunc(p):
             if p[1:2] == ':':
                 return '', p # Drive letter present
-            firstTwo = p[0:2]
-            if firstTwo == '//' or firstTwo == '\\\\':
+            firstTwo = p[:2]
+            if firstTwo in ['//', '\\\\']:
                 # is a UNC path:
                 # vvvvvvvvvvvvvvvvvvvv equivalent to drive letter
                 # \\machine\mountpoint\directories...
@@ -75,11 +75,12 @@ if not hasattr(os.path, 'relpath'):
                 unc_path, rest = splitunc(path)
                 unc_start, rest = splitunc(start)
                 if bool(unc_path) ^ bool(unc_start):
-                    raise ValueError("Cannot mix UNC and non-UNC paths (%s and %s)"
-                                                                        % (path, start))
+                    raise ValueError(f"Cannot mix UNC and non-UNC paths ({path} and {start})")
                 else:
-                    raise ValueError("path is on drive %s, start on drive %s"
-                                                        % (path_list[0], start_list[0]))
+                    raise ValueError(
+                        f"path is on drive {path_list[0]}, start on drive {start_list[0]}"
+                    )
+
             # Work out how much of the filepath is shared by start and path.
             for i in range(min(len(start_list), len(path_list))):
                 if start_list[i].lower() != path_list[i].lower():
@@ -88,9 +89,7 @@ if not hasattr(os.path, 'relpath'):
                 i += 1
 
             rel_list = [os.path.pardir] * (len(start_list)-i) + path_list[i:]
-            if not rel_list:
-                return os.path.curdir
-            return os.path.join(*rel_list)
+            return os.path.join(*rel_list) if rel_list else os.path.curdir
     else:
         def relpath(path, start=os.path.curdir):
             """Return a relative version of a path"""
@@ -105,9 +104,7 @@ if not hasattr(os.path, 'relpath'):
             i = len(os.path.commonprefix([start_list, path_list]))
 
             rel_list = [os.path.pardir] * (len(start_list)-i) + path_list[i:]
-            if not rel_list:
-                return os.path.curdir
-            return os.path.join(*rel_list)
+            return os.path.join(*rel_list) if rel_list else os.path.curdir
 else:
     relpath = os.path.relpath
 
@@ -134,10 +131,7 @@ def to_bytestring(s):
     """ convert to bytestring an unicode """
     if not isinstance(s, six.string_types):
         return s
-    if isinstance(s, six.text_type):
-        return s.encode('utf-8')
-    else:
-        return s
+    return s.encode('utf-8') if isinstance(s, six.text_type) else s
     
 def read_file(fname, utf8=True, force_read=False):
     """ read file content"""
@@ -173,9 +167,8 @@ def write_content(fname, content):
     :attr fname: string,filename
     :attr content: string
     """
-    f = open(fname, 'wb')
-    f.write(to_bytestring(content))
-    f.close()
+    with open(fname, 'wb') as f:
+        f.write(to_bytestring(content))
 
 def write_json(filename, content):
     """ serialize content in json and save it

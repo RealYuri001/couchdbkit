@@ -210,11 +210,7 @@ class Server(object):
         """
         return an available uuid from couchdbkit
         """
-        if count is not None:
-            self._uuid_batch_count = count
-        else:
-            self._uuid_batch_count = self.uuid_batch_count
-
+        self._uuid_batch_count = count if count is not None else self.uuid_batch_count
         try:
             return self._uuids.pop()
         except IndexError:
@@ -270,14 +266,16 @@ class Database(object):
         self.server_uri, self.dbname = self.uri.rsplit("/", 1)
         self.cloudant_dbname = unquote(self.dbname)
 
-        if server is not None:
-            if not hasattr(server, 'next_uuid'):
-                raise TypeError('%s is not a couchdbkit.Server instance' %
-                            server.__class__.__name__)
-            self.server = server
-        else:
+        if server is None:
             self.server = server = Server(self.server_uri, **params)
 
+        elif not hasattr(server, 'next_uuid'):
+            raise TypeError(
+                f'{server.__class__.__name__} is not a couchdbkit.Server instance'
+            )
+
+        else:
+            self.server = server
         self.cloudant_client = self.server.cloudant_client
 
         validate_dbname(self.dbname)
@@ -289,7 +287,7 @@ class Database(object):
         self.database_url = self.cloudant_database.database_url
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.dbname)
+        return f"<{self.__class__.__name__} {self.dbname}>"
 
     def _database_path(self, path):
         return '/'.join([self.database_url, path])
@@ -323,7 +321,7 @@ class Database(object):
         """
         path = "/_compact"
         if dname is not None:
-            path = "%s/%s" % (path, resource.escape_docid(dname))
+            path = f"{path}/{resource.escape_docid(dname)}"
         path = self._database_path(path)
         res = self._request_session.post(path, headers={"Content-Type": "application/json"})
         res.raise_for_status()
@@ -344,9 +342,11 @@ class Database(object):
             old_atts = doc.get('_attachments', {})
             atts = {}
             for name, info in old_atts.items():
-                att = {}
-                att['content_type'] = info['content_type']
-                att['data'] = self.fetch_attachment(ddoc['doc'], name)
+                att = {
+                    'content_type': info['content_type'],
+                    'data': self.fetch_attachment(ddoc['doc'], name),
+                }
+
                 atts[name] = att
 
             # create a fresh doc
@@ -360,9 +360,7 @@ class Database(object):
 
         # we let a chance to the system to sync
         times = 0
-        while times < 10:
-            if self.dbname in self.server:
-                break
+        while times < 10 and self.dbname not in self.server:
             time.sleep(0.2)
             times += 1
 
@@ -527,11 +525,10 @@ class Database(object):
                 if e.response.status_code != 409:
                     raise
 
-                if force_update:
-                    couch_doc['_rev'] = self.get_rev(docid)
-                    couch_doc.save()
-                else:
+                if not force_update:
                     raise ResourceConflict
+                couch_doc['_rev'] = self.get_rev(docid)
+                couch_doc.save()
             res = couch_doc
         else:
             res = self.cloudant_database.create_document(doc1)
@@ -668,7 +665,7 @@ class Database(object):
         doc1, schema = _maybe_serialize(doc)
 
         if isinstance(doc1, dict):
-            if not '_id' or not '_rev' in doc1:
+            if '_rev' not in doc1:
                 raise KeyError('_id and _rev are required to delete a doc')
 
             couch_doc = Document(self.cloudant_database, doc1['_id'])
@@ -714,22 +711,22 @@ class Database(object):
         doc1, schema = _maybe_serialize(doc)
         if isinstance(doc1, six.string_types):
             docid = doc1
-        else:
-            if '_id' not in doc1:
-                raise KeyError('_id is required to copy a doc')
+        elif '_id' in doc1:
             docid = doc1['_id']
 
+        else:
+            raise KeyError('_id is required to copy a doc')
         if dest is None:
             destination = self.server.next_uuid(count=1)
         elif isinstance(dest, six.string_types):
             if dest in self:
                 dest = self.get(dest)
-                destination = "%s?rev=%s" % (dest['_id'], dest['_rev'])
+                destination = f"{dest['_id']}?rev={dest['_rev']}"
             else:
                 destination = dest
         elif isinstance(dest, dict):
             if '_id' in dest and '_rev' in dest and dest['_id'] in self:
-                destination = "%s?rev=%s" % (dest['_id'], dest['_rev'])
+                destination = f"{dest['_id']}?rev={dest['_rev']}"
             else:
                 raise KeyError("dest doesn't exist or this not a document ('_id' or '_rev' missig).")
 
@@ -751,11 +748,10 @@ class Database(object):
         params.pop('dynamic_properties', None)
         if view_path == '_all_docs':
             return self.cloudant_database.all_docs(**params)
-        else:
-            view_path = view_path.split('/')
-            assert len(view_path) == 4
-            view = View(DesignDocument(self.cloudant_database, view_path[1]), view_path[3])
-            return view(**params)
+        view_path = view_path.split('/')
+        assert len(view_path) == 4
+        view = View(DesignDocument(self.cloudant_database, view_path[1]), view_path[3])
+        return view(**params)
 
     def view(self, view_name, schema=None, wrapper=None, **params):
         """ get view results from database. viewname is generally
@@ -777,24 +773,26 @@ class Database(object):
 
         if view_name.startswith('/'):
             view_name = view_name[1:]
-        if view_name == '_all_docs':
-            view_path = view_name
-        elif view_name == '_all_docs_by_seq':
+        if view_name in ['_all_docs', '_all_docs_by_seq']:
             view_path = view_name
         else:
             view_name = view_name.split('/')
             dname = view_name.pop(0)
             vname = '/'.join(view_name)
-            view_path = '_design/%s/_view/%s' % (dname, vname)
+            view_path = f'_design/{dname}/_view/{vname}'
 
         return ViewResults(self.raw_view, view_path, wrapper, schema, params)
 
     def search( self, view_name, handler='_fti/_design', wrapper=None, schema=None, **params):
         """ Search. Return results from search. Use couchdb-lucene
         with its default settings by default."""
-        return ViewResults(self.raw_view,
-                    "/%s/%s" % (handler, view_name),
-                    wrapper=wrapper, schema=schema, params=params)
+        return ViewResults(
+            self.raw_view,
+            f"/{handler}/{view_name}",
+            wrapper=wrapper,
+            schema=schema,
+            params=params,
+        )
 
     def documents(self, schema=None, wrapper=None, **params):
         """ return a ViewResults objects containing all documents.
@@ -928,7 +926,7 @@ class ViewResults(object):
 
         length = len(self)
         if length > 1:
-            raise MultipleResultsFound("%s results found." % length)
+            raise MultipleResultsFound(f"{length} results found.")
 
         result = self.first()
         if result is None and except_all:
@@ -982,9 +980,7 @@ class ViewResults(object):
         """ return number of total rows in the view """
         self._fetch_if_needed()
         # reduce case, count number of lines
-        if self._total_rows is None:
-            return self.count()
-        return self._total_rows
+        return self.count() if self._total_rows is None else self._total_rows
 
     @property
     def offset(self):

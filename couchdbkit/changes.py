@@ -41,9 +41,7 @@ class ChangesStream(object):
         return False
 
     def __iter__(self):
-        feed = self.db.cloudant_database.changes(**self.params)
-        for change in feed:
-            yield change
+        yield from self.db.cloudant_database.changes(**self.params)
 
     def __next__(self):
         return self

@@ -75,7 +75,7 @@ class ClientServerTestCase(unittest.TestCase):
         t.start()
 
         for i in range(5):
-            doc = {"_id": "test%s" % str(i)}
+            doc = {"_id": f"test{str(i)}"}
             self.db.save_doc(doc)
 
         self.db.ensure_full_commit()

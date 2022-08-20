@@ -113,7 +113,7 @@ def document_to_dict(instance, properties=None, exclude=None):
     # avoid a circular import
     data = {}
     for prop_name in instance._doc.keys():
-        if properties and not prop_name in properties:
+        if properties and prop_name not in properties:
             continue
         if exclude and prop_name in exclude:
             continue
@@ -132,7 +132,7 @@ def fields_for_document(document, properties=None, exclude=None):
     they are listed in the ``properties`` argument.
     """
     field_list = []
-    
+
     values = []
     if properties:
         values = [document._properties[prop] for prop in properties if \
@@ -140,9 +140,9 @@ def fields_for_document(document, properties=None, exclude=None):
     else:
         values = list(document._properties.values())
         values.sort(lambda a, b: cmp(a.creation_counter, b.creation_counter))
-    
+
     for prop in values: 
-        if properties and not prop.name in properties:
+        if properties and prop.name not in properties:
             continue
         if exclude and prop.name in exclude:
             continue
@@ -152,16 +152,15 @@ def fields_for_document(document, properties=None, exclude=None):
                 'required': prop.required, 
                 'label': capfirst(prop.verbose_name), 
             }
-            
+
             if prop.default is not None:
                 defaults['initial'] = prop.default_value
-                
-            if prop.choices:
-                if prop.default:
-                    defaults['choices'] = prop.default_value() + list(
-                                    prop.choices)
-                    defaults['coerce'] = prop.to_python
-                
+
+            if prop.choices and prop.default:
+                defaults['choices'] = prop.default_value() + list(
+                                prop.choices)
+                defaults['coerce'] = prop.to_python
+
             field_list.append((prop.name, 
                 FIELDS_PROPERTES_MAPPING[property_class_name](**defaults)))
     return OrderedDict(field_list)

@@ -52,9 +52,7 @@ class CouchdbkitHandler(object):
 
         # Convert old style to new style
         if isinstance(databases, (list, tuple)):
-            databases = dict(
-                (app_name, {'URL': uri}) for app_name, uri in databases
-            )
+            databases = {app_name: {'URL': uri} for app_name, uri in databases}
 
         # create databases sessions
         for app_name, app_setting in six.iteritems(databases):
@@ -69,8 +67,7 @@ class CouchdbkitHandler(object):
                 else:
                     server_uri, dbname = uri.rsplit("/", 1)
             except ValueError:
-                raise ValueError("couchdb uri [%s:%s] invalid" % (
-                    app_name, uri))
+                raise ValueError(f"couchdb uri [{app_name}:{uri}] invalid")
 
             server = Server(server_uri)
             app_label = app_name.split('.')[-1]
@@ -89,40 +86,38 @@ class CouchdbkitHandler(object):
         for schema_dict in schema_list:
             for schema in schema_dict.values():
                 app_module = schema.__module__.rsplit(".", 1)[0]
-                if app_module == app_name and not schema._meta.app_label in app_labels:
+                if (
+                    app_module == app_name
+                    and schema._meta.app_label not in app_labels
+                ):
                     app_labels.add(schema._meta.app_label)
         for app_label in app_labels:
-            if not app_label in self._databases:
+            if app_label not in self._databases:
                 continue
             if verbosity >=1:
-                print("sync `%s` in CouchDB" % app_name)
+                print(f"sync `{app_name}` in CouchDB")
             db = self.get_db(app_label)
 
             app_path = app.path
-            design_path = "%s/%s" % (app_path, "_design")
+            design_path = f"{app_path}/_design"
             if not os.path.isdir(design_path):
                 if settings.DEBUG:
                     print("%s don't exists, no ddoc synchronized" % design_path, file=sys.stderr)
                 return
 
-            if temp:
-                design_name = '%s-%s' % (app_label, temp)
-            else:
-                design_name = app_label
-
-            docid = "_design/%s" % design_name
+            design_name = f'{app_label}-{temp}' if temp else app_label
+            docid = f"_design/{design_name}"
 
             push(os.path.join(app_path, "_design"), db, force=True,
                     docid=docid)
 
             if temp:
                 ddoc = db[docid]
-                view_names = list(ddoc.get('views', {}).keys())
-                if len(view_names) > 0:
+                if view_names := list(ddoc.get('views', {}).keys()):
                     if verbosity >= 1:
                         print('Triggering view rebuild')
 
-                    view = '%s/%s' % (design_name, view_names[0])
+                    view = f'{design_name}/{view_names[0]}'
                     list(db.view(view, limit=0))
 
 
@@ -137,19 +132,22 @@ class CouchdbkitHandler(object):
         for schema_dict in schema_list:
             for schema in schema_dict.values():
                 app_module = schema.__module__.rsplit(".", 1)[0]
-                if app_module == app_name and not schema._meta.app_label in app_labels:
+                if (
+                    app_module == app_name
+                    and schema._meta.app_label not in app_labels
+                ):
                     app_labels.add(schema._meta.app_label)
         for app_label in app_labels:
-            if not app_label in self._databases:
+            if app_label not in self._databases:
                 continue
             if verbosity >=1:
-                print("Copy prepared design docs for `%s`" % app_name)
+                print(f"Copy prepared design docs for `{app_name}`")
             db = self.get_db(app_label)
 
-            tmp_name = '%s-%s' % (app_label, temp)
+            tmp_name = f'{app_label}-{temp}'
 
-            from_id = '_design/%s' % tmp_name
-            to_id   = '_design/%s' % app_label
+            from_id = f'_design/{tmp_name}'
+            to_id = f'_design/{app_label}'
 
             try:
                 db.copy_doc(from_id, to_id)
@@ -158,7 +156,7 @@ class CouchdbkitHandler(object):
                     del db[from_id]
 
             except ResourceNotFound:
-                print('%s not found.' % (from_id, ))
+                print(f'{from_id} not found.')
                 return
 
 

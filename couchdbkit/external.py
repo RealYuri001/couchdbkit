@@ -41,10 +41,8 @@ class External(object):
         self.stdout.flush()
         
     def lines(self):
-        line = self.stdin.readline()
-        while line:
+        while line := self.stdin.readline():
             yield json.loads(line)
-            line = self.stdin.readline()
     
     def run(self):
         for line in self.lines():

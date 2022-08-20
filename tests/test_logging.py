@@ -46,8 +46,9 @@ class TestLogging(TestCase):
     def test_install_request_logger(self):
         self.addCleanup(mod.install_request_logger())
         self.db.get(self.doc_id)
-        self.assertRegex(str(self.log),
-            r"^GET to couchdbkit_test/{} took \d.\d".format(self.doc_id))
+        self.assertRegex(
+            str(self.log), f"^GET to couchdbkit_test/{self.doc_id} took \d.\d"
+        )
 
     def test_extra_format(self):
         fmt = "%(status_code)s %(content_length)s %(message)s"

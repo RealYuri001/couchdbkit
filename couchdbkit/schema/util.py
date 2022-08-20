@@ -6,7 +6,7 @@ def schema_map(schema, dynamic_properties):
     if hasattr(schema, "wrap") and hasattr(schema, '_doc_type'):
         schema = {schema._doc_type: schema}
     elif isinstance(schema, list):
-        schema = dict((s._doc_type, s) for s in schema)
+        schema = {s._doc_type: s for s in schema}
 
     if dynamic_properties is not None:
         for name, cls in schema.items():
@@ -18,7 +18,7 @@ def schema_map(schema, dynamic_properties):
 
 
 def doctype_attr_of(classes):
-    doc_type_attrs = set(cls._doc_type_attr for cls in classes)
+    doc_type_attrs = {cls._doc_type_attr for cls in classes}
     assert len(doc_type_attrs) == 1, "inconsistent doctype attr"
     return doc_type_attrs.pop()
 

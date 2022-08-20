@@ -99,7 +99,7 @@ class Options(object):
         del self.meta
 
     def __str__(self):
-        return "%s.%s" % (smart_str(self.app_label), smart_str(self.module_name))
+        return f"{smart_str(self.app_label)}.{smart_str(self.module_name)}"
 
     def verbose_name_raw(self):
         """
@@ -122,14 +122,13 @@ class DocumentMeta(schema.SchemaProperties):
             return super_new(cls, name, bases, attrs)
 
         new_class = super_new(cls, name, bases, attrs)
-        attr_meta = attrs.pop('Meta', None)
-        if not attr_meta:
-            meta = getattr(new_class, 'Meta', None)
-        else:
+        if attr_meta := attrs.pop('Meta', None):
             if getattr(attr_meta, 'abstract', False):
                 return new_class
             meta = attr_meta
 
+        else:
+            meta = getattr(new_class, 'Meta', None)
         if getattr(meta, 'app_label', None) is None:
             document_module = sys.modules[new_class.__module__]
             app_label = document_module.__name__.split('.')[-2]
@@ -142,11 +141,11 @@ class DocumentMeta(schema.SchemaProperties):
 
         return get_schema(app_label, name)
 
-    def add_to_class(cls, name, value):
+    def add_to_class(self, name, value):
         if hasattr(value, 'contribute_to_class'):
-            value.contribute_to_class(cls, name)
+            value.contribute_to_class(self, name)
         else:
-            setattr(cls, name, value)
+            setattr(self, name, value)
 
 class Document(six.with_metaclass(DocumentMeta, schema.Document)):
     """ Document object for django extension """
